@@ -2,6 +2,9 @@
   "name": "palarealestate",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.19.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "PRISMA_CLIENT_ENGINE_TYPE=binary next build",
@@ -52,6 +55,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@railway/cli": "^4.36.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
