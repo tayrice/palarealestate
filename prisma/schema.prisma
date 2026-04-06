@@ -1,0 +1,201 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Role {
+  admin
+  staff
+}
+
+enum LeadStatus {
+  open
+  claimed
+  closed
+}
+
+enum LeadSource {
+  ankaufstation
+  besichtigung
+  website
+  other
+}
+
+enum LeadPriority {
+  low
+  normal
+  high
+}
+
+enum ClosedResult {
+  won
+  lost
+}
+
+enum ClosedReason {
+  price
+  competition
+  no_interest
+  not_reachable
+  later
+  other
+}
+
+enum TaskType {
+  contact
+  followup
+  appointment
+  other
+}
+
+enum DocumentType {
+  offer
+  reservation
+  contract_draft
+}
+
+enum DocumentStatus {
+  draft
+  approved
+  sent
+}
+
+// ─── Models ──────────────────────────────────────────────────────────────────
+
+model User {
+  id             String    @id @default(cuid())
+  name           String
+  email          String    @unique
+  passwordHash   String
+  role           Role      @default(staff)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  ownedLeads     Lead[]    @relation("LeadOwner")
+  comments       LeadComment[]
+  tasks          Task[]
+  activityLogs   ActivityLog[]
+}
+
+model Lead {
+  id               String        @id @default(cuid())
+  status           LeadStatus    @default(open)
+  source           LeadSource    @default(ankaufstation)
+  priority         LeadPriority  @default(normal)
+  ownerId          String?
+  owner            User?         @relation("LeadOwner", fields: [ownerId], references: [id])
+  claimedAt        DateTime?
+  lastActivityAt   DateTime      @default(now())
+  nextActionAt     DateTime?
+  refNumber        String        @unique @default(cuid())
+
+  // Customer
+  customerName     String
+  customerPhone    String
+  customerEmail    String?
+  whatsappOptIn    Boolean       @default(false)
+
+  // Immobiliendaten
+  propertyType     String?   // Haus / Wohnung / Grundstück / Gewerbe
+  address          String?   // Straße + Hausnummer
+  city             String?
+  zip              String?
+  objectRef        String?   // interne Objektnummer (optional)
+  yearBuilt        String?
+  livingArea       Int?      // Wohnfläche m²
+  plotArea         Int?      // Grundstücksfläche m²
+  rooms            String?   // z. B. "3.5"
+  bathrooms        Int?
+  floor            Int?      // Etage (bei Wohnungen)
+  totalFloors      Int?
+  condition        String?   // Zustand
+  energyClass      String?
+  hasGarage        Boolean?
+  propertyNotes    String?
+  photos           String    @default("[]")
+
+  // Price & timeline
+  priceExpectation Int?
+  sellTimeline     String?
+
+  // Closing
+  closedAt         DateTime?
+  closedResult     ClosedResult?
+  closedReason     ClosedReason?
+  closedComment    String?
+
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  comments         LeadComment[]
+  tasks            Task[]
+  documents        Document[]
+  features         PropertyFeature[]
+  activityLogs     ActivityLog[]
+}
+
+model LeadComment {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  content   String
+  createdAt DateTime @default(now())
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  leadId      String
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type        TaskType  @default(contact)
+  description String?
+  dueAt       DateTime
+  doneAt      DateTime?
+  createdBy   String    // "system" or user id
+  assignedTo  String?
+  assignee    User?     @relation(fields: [assignedTo], references: [id])
+  createdAt   DateTime  @default(now())
+}
+
+model Document {
+  id        String         @id @default(cuid())
+  leadId    String
+  lead      Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  type      DocumentType
+  status    DocumentStatus @default(draft)
+  content   Json
+  pdfUrl    String?
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+}
+
+model PropertyFeature {
+  id         String  @id @default(cuid())
+  leadId     String
+  lead       Lead    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  featureKey String
+  label      String
+  enabled    Boolean @default(true)
+  category   String?
+
+  @@unique([leadId, featureKey])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  leadId    String
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  eventType String
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
